@@ -1,6 +1,6 @@
 {
   "name": "@akshay-khapare/react-native-google-signin",
-  "version": "1.1.0",
+  "version": "1.0.4",
   "description": "A personal project for React Native Google Sign-in in Android applications with Firebase integration. Created by Akshay Khapare and open for others to use.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
