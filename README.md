@@ -143,19 +143,54 @@ function LoginScreen() {
   );
 }
 
-## Error Handling
+## Error Handling and i18n
 
-The package includes built-in error handling for common scenarios:
+This package uses error codes instead of hardcoded messages to support internationalization (i18n). Each error returned by the package has the following structure:
 
-| Error Code | Description | Resolution |
-|------------|-------------|------------|
-| INVALID_CONFIG | Invalid configuration parameters | Check your webClientId and configuration |
-| NO_ID_TOKEN | No ID token received from Google | Ensure proper Firebase setup |
-| SIGN_IN_CANCELLED | User cancelled the sign-in | Handle as a normal user action |
-| IN_PROGRESS | Sign-in already in progress | Wait for the current operation to complete |
-| PLAY_SERVICES_NOT_AVAILABLE | Google Play Services not available | Prompt user to install/update Play Services |
-| SIGN_IN_FAILED | Generic sign-in failure | Check error message for details |
-| SIGN_OUT_FAILED | Failed to sign out | Check if user was signed in |
+```typescript
+interface AuthError {
+  code: AuthErrorCode;
+  message?: string;     // Optional fallback message
+  details?: Record<string, unknown>;  // Additional error details
+}
+```
+
+Available error codes:
+- `PLAY_SERVICES_NOT_AVAILABLE`: Google Play Services is not available or outdated
+- `SIGN_IN_FAILED`: General sign-in failure
+- `SIGN_IN_CANCELLED`: User cancelled the sign-in process
+- `SIGN_IN_IN_PROGRESS`: Another sign-in operation is in progress
+- `INVALID_CREDENTIALS`: Failed to get valid credentials
+- `SIGN_OUT_FAILED`: Failed to sign out
+- `NO_ID_TOKEN`: No ID token received from Google
+- `CONFIGURATION_MISSING`: Missing or invalid configuration
+- `NETWORK_ERROR`: Network-related issues
+- `UNKNOWN_ERROR`: Unexpected errors
+
+Example usage with i18n:
+
+```typescript
+import { useAuthStore } from '@akshay-khapare/react-native-google-signin';
+import { useTranslation } from 'react-i18next';
+
+function LoginComponent() {
+  const { t } = useTranslation();
+  const { error, googleSignIn } = useAuthStore();
+
+  // Map error codes to translated messages
+  const getErrorMessage = (error) => {
+    if (!error) return '';
+    return t(`errors.${error.code}`, { defaultValue: error.message });
+  };
+
+  return (
+    <div>
+      {error && <div>{getErrorMessage(error)}</div>}
+      <button onClick={googleSignIn}>Sign In</button>
+    </div>
+  );
+}
+```
 
 ## Complete Example
 

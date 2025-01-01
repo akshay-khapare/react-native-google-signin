@@ -1,12 +1,11 @@
 import {
   GoogleSignin,
-  type User,
+  statusCodes,
 } from "@react-native-google-signin/google-signin";
 import auth, { FirebaseAuthTypes } from "@react-native-firebase/auth";
-import { AuthError } from "./errors";
+import { createAuthError } from "./errors";
 import { useAuthStore } from "./store/useAuthStore";
 
-// Types
 export interface GoogleSignInConfig {
   webClientId: string;
   hostedDomain?: string;
@@ -15,66 +14,71 @@ export interface GoogleSignInConfig {
 
 export interface SignInResult {
   userCredential: FirebaseAuthTypes.UserCredential | null;
-  error: AuthError | null;
+  error: ReturnType<typeof createAuthError> | null;
 }
 
 export interface SignOutResult {
-  error: AuthError | null;
+  error: ReturnType<typeof createAuthError> | null;
 }
 
-// Google Sign-In Helper
 export class GoogleSignIn {
-  static configure(config: GoogleSignInConfig): void {
-    if (!config.webClientId) {
-      throw new Error("webClientId is required");
+  static configure({
+    webClientId,
+    offlineAccess = false,
+    hostedDomain,
+  }: GoogleSignInConfig): void {
+    if (!webClientId?.trim()) {
+      throw createAuthError("CONFIGURATION_MISSING", "webClientId is required");
     }
 
-    GoogleSignin.configure({
-      webClientId: config.webClientId,
-      offlineAccess: config.offlineAccess || false,
-      hostedDomain: config.hostedDomain,
-    });
+    GoogleSignin.configure({ webClientId, offlineAccess, hostedDomain });
   }
 
   static async signIn(): Promise<SignInResult> {
     try {
-      // Check if Play Services are available
-      try {
-        await GoogleSignin.hasPlayServices();
-      } catch (error) {
-        return {
-          userCredential: null,
-          error: new AuthError(
-            "PLAY_SERVICES_NOT_AVAILABLE",
-            (error as Error).message
-          ),
-        };
-      }
+      await GoogleSignin.hasPlayServices({
+        showPlayServicesUpdateDialog: true,
+      });
+      const idToken = (await GoogleSignin.signIn()).data?.idToken;
 
-      // Perform Google Sign In
-      const signInResult = await GoogleSignin.signIn();
-      const idToken = signInResult.data?.idToken;
       if (!idToken) {
-        return {
-          userCredential: null,
-          error: new AuthError("TOKEN_ERROR", "No ID token received"),
-        };
+        return { userCredential: null, error: createAuthError("NO_ID_TOKEN") };
       }
 
-      // Create Firebase credential
-      const credential = auth.GoogleAuthProvider.credential(idToken);
+      const userCredential = await auth().signInWithCredential(
+        auth.GoogleAuthProvider.credential(idToken)
+      );
 
-      // Sign in to Firebase
-      const userCredential = await auth().signInWithCredential(credential);
-
-      return {
-        userCredential,
-        error: null,
-      };
+      return { userCredential, error: null };
     } catch (error) {
+      if (error && typeof error === "object" && "code" in error) {
+        const code = error.code;
+        if (code === statusCodes.SIGN_IN_CANCELLED) {
+          return {
+            userCredential: null,
+            error: createAuthError("SIGN_IN_CANCELLED"),
+          };
+        }
+        if (code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
+          return {
+            userCredential: null,
+            error: createAuthError("PLAY_SERVICES_NOT_AVAILABLE"),
+          };
+        }
+      }
+
+      const message = error instanceof Error ? error.message : String(error);
+      const isNetworkError =
+        message.toLowerCase().includes("network") ||
+        message.toLowerCase().includes("internet") ||
+        message.toLowerCase().includes("connection");
+
       return {
         userCredential: null,
-        error: new AuthError("SIGN_IN_FAILED", (error as Error).message),
+        error: createAuthError(
+          isNetworkError ? "NETWORK_ERROR" : "SIGN_IN_FAILED",
+          message
+        ),
       };
     }
   }
@@ -85,11 +89,13 @@ export class GoogleSignIn {
       return { error: null };
     } catch (error) {
       return {
-        error: new AuthError("SIGN_OUT_FAILED", (error as Error).message),
+        error: createAuthError(
+          "SIGN_OUT_FAILED",
+          error instanceof Error ? error.message : String(error)
+        ),
       };
     }
   }
 }
 
-// Export types and components
 export { useAuthStore };
