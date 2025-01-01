@@ -45,7 +45,7 @@ export class GoogleSignIn {
         return {
           userCredential: null,
           error: new AuthError(
-            'PLAY_SERVICES_NOT_AVAILABLE',
+            "PLAY_SERVICES_NOT_AVAILABLE",
             (error as Error).message
           ),
         };
@@ -53,17 +53,16 @@ export class GoogleSignIn {
 
       // Perform Google Sign In
       const signInResult = await GoogleSignin.signIn();
-      const tokens = await GoogleSignin.getTokens();
-      
-      if (!tokens?.idToken) {
+      const idToken = signInResult.data?.idToken;
+      if (!idToken) {
         return {
           userCredential: null,
-          error: new AuthError('TOKEN_ERROR', 'No ID token received'),
+          error: new AuthError("TOKEN_ERROR", "No ID token received"),
         };
       }
 
       // Create Firebase credential
-      const credential = auth.GoogleAuthProvider.credential(tokens.idToken);
+      const credential = auth.GoogleAuthProvider.credential(idToken);
 
       // Sign in to Firebase
       const userCredential = await auth().signInWithCredential(credential);
@@ -75,7 +74,7 @@ export class GoogleSignIn {
     } catch (error) {
       return {
         userCredential: null,
-        error: new AuthError('SIGN_IN_FAILED', (error as Error).message),
+        error: new AuthError("SIGN_IN_FAILED", (error as Error).message),
       };
     }
   }
@@ -86,7 +85,7 @@ export class GoogleSignIn {
       return { error: null };
     } catch (error) {
       return {
-        error: new AuthError('SIGN_OUT_FAILED', (error as Error).message),
+        error: new AuthError("SIGN_OUT_FAILED", (error as Error).message),
       };
     }
   }
