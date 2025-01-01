@@ -13,22 +13,52 @@ Simple Google Sign-In package for React Native Android apps with Firebase integr
 ## Installation
 
 ```bash
+# Install the package
 npm install @akshay-khapare/react-native-google-signin
+
+# Install peer dependencies (if not already in your project)
+npm install @react-native-firebase/app@latest \
+            @react-native-firebase/auth@latest \
+            @react-native-google-signin/google-signin@latest \
+            zustand@latest
 ```
+
+> **Note**: If you already have React and React Native in your project, you don't need to reinstall them.
 
 ## Dependencies
 
-Add these dependencies to your app's `package.json`:
+This package has the following peer dependencies that need to be installed in your project:
 ```json
 {
-  "dependencies": {
-    "@react-native-firebase/app": "^18.9.0",
-    "@react-native-firebase/auth": "^18.9.0",
-    "@react-native-google-signin/google-signin": "^10.0.1",
-    "zustand": "^4.4.7"
+  "peerDependencies": {
+    "@react-native-firebase/app": ">=21.0.0",
+    "@react-native-firebase/auth": ">=21.0.0",
+    "@react-native-google-signin/google-signin": ">=13.0.0",
+    "react": ">=18.0.0",
+    "react-native": "*",
+    "zustand": ">=5.0.0"
   }
 }
 ```
+
+These dependencies will be automatically flagged by npm during installation if they're missing from your project.
+
+## Version Compatibility
+
+| Package Version | React Native | Firebase App | Firebase Auth | Google Sign-In | Zustand |
+|----------------|--------------|--------------|---------------|----------------|---------|
+| 1.0.x          | >=0.71.0    | ^21.6.1      | ^21.6.1       | ^13.1.0        | ^5.0.2  |
+
+### Minimum Requirements
+- React Native: 0.71.0 or higher
+- Android API Level: 21 (Android 5.0) or higher
+- Google Play Services: 20.7.0 or higher
+
+### Tested Environments
+- React Native: 0.71.0 - 0.73.0
+- Android Studio: Arctic Fox (2020.3.1) or higher
+- Gradle: 7.5.1 or higher
+- Node.js: 16.x, 18.x, 20.x
 
 ## Android Setup
 
@@ -112,7 +142,6 @@ function LoginScreen() {
     </View>
   );
 }
-```
 
 ## Error Handling
 
@@ -173,7 +202,6 @@ function AuthScreen() {
     </View>
   );
 }
-```
 
 ## Contributing
 

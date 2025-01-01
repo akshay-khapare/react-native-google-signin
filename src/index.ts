@@ -1,94 +1,96 @@
 import {
   GoogleSignin,
-  statusCodes,
+  type User,
 } from "@react-native-google-signin/google-signin";
 import auth, { FirebaseAuthTypes } from "@react-native-firebase/auth";
-import { AuthErrorCode, createError } from "./errors";
+import { AuthError } from "./errors";
 import { useAuthStore } from "./store/useAuthStore";
 
 // Types
 export interface GoogleSignInConfig {
   webClientId: string;
-  offlineAccess?: boolean;
   hostedDomain?: string;
+  offlineAccess?: boolean;
+}
+
+export interface SignInResult {
+  userCredential: FirebaseAuthTypes.UserCredential | null;
+  error: AuthError | null;
+}
+
+export interface SignOutResult {
+  error: AuthError | null;
 }
 
 // Google Sign-In Helper
 export class GoogleSignIn {
-  static async configure(config: GoogleSignInConfig) {
+  static configure(config: GoogleSignInConfig): void {
     if (!config.webClientId) {
-      throw createError("INVALID_CONFIG", "webClientId is required");
-    }
-    if (typeof config.webClientId !== 'string') {
-      throw createError("INVALID_CONFIG", "webClientId must be a string");
-    }
-    if (config.hostedDomain && typeof config.hostedDomain !== 'string') {
-      throw createError("INVALID_CONFIG", "hostedDomain must be a string");
+      throw new Error("webClientId is required");
     }
 
     GoogleSignin.configure({
       webClientId: config.webClientId,
-      offlineAccess: config.offlineAccess ?? false,
+      offlineAccess: config.offlineAccess || false,
       hostedDomain: config.hostedDomain,
     });
   }
 
-  static async signIn(): Promise<{
-    userCredential: FirebaseAuthTypes.UserCredential | null;
-    error: Error | null;
-  }> {
+  static async signIn(): Promise<SignInResult> {
     try {
-      await GoogleSignin.hasPlayServices({
-        showPlayServicesUpdateDialog: true,
-      });
-
-      const { idToken } = await GoogleSignin.signIn();
-      if (!idToken) {
-        throw createError("NO_ID_TOKEN");
-      }
-
-      const googleCredential = auth.GoogleAuthProvider.credential(idToken);
-      const userCredential = await auth().signInWithCredential(
-        googleCredential
-      );
-
-      return { userCredential, error: null };
-    } catch (error: any) {
-      if (error?.code === statusCodes.SIGN_IN_CANCELLED) {
+      // Check if Play Services are available
+      try {
+        await GoogleSignin.hasPlayServices();
+      } catch (error) {
         return {
           userCredential: null,
-          error: createError("SIGN_IN_CANCELLED"),
+          error: new AuthError(
+            'PLAY_SERVICES_NOT_AVAILABLE',
+            (error as Error).message
+          ),
         };
       }
-      if (error?.code === statusCodes.IN_PROGRESS) {
+
+      // Perform Google Sign In
+      const signInResult = await GoogleSignin.signIn();
+      const tokens = await GoogleSignin.getTokens();
+      
+      if (!tokens?.idToken) {
         return {
           userCredential: null,
-          error: createError("IN_PROGRESS"),
+          error: new AuthError('TOKEN_ERROR', 'No ID token received'),
         };
       }
-      if (error?.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
-        return {
-          userCredential: null,
-          error: createError("PLAY_SERVICES_NOT_AVAILABLE"),
-        };
-      }
+
+      // Create Firebase credential
+      const credential = auth.GoogleAuthProvider.credential(tokens.idToken);
+
+      // Sign in to Firebase
+      const userCredential = await auth().signInWithCredential(credential);
+
+      return {
+        userCredential,
+        error: null,
+      };
+    } catch (error) {
       return {
         userCredential: null,
-        error: createError("SIGN_IN_FAILED"),
+        error: new AuthError('SIGN_IN_FAILED', (error as Error).message),
       };
     }
   }
 
-  static async signOut(): Promise<{ error: Error | null }> {
+  static async signOut(): Promise<SignOutResult> {
     try {
-      await GoogleSignin.signOut();
-      await auth().signOut();
+      await Promise.all([GoogleSignin.signOut(), auth().signOut()]);
       return { error: null };
     } catch (error) {
-      return { error: createError("SIGN_OUT_FAILED") };
+      return {
+        error: new AuthError('SIGN_OUT_FAILED', (error as Error).message),
+      };
     }
   }
 }
 
 // Export types and components
-export { useAuthStore, AuthErrorCode };
+export { useAuthStore };
